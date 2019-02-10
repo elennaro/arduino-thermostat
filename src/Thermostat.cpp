@@ -5,7 +5,8 @@ const float MINIMAL_DESIRED_TEMPERATURE = 10.0;
 const float MAXIMAL_DESIRED_TEMPERATURE = 40.0;
 
 enum Mode : boolean {
-    AUTO, MANUAL
+    MANUAL = false,
+    AUTO = true
 };
 
 class TemperatureStack {  // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
@@ -39,15 +40,9 @@ public:
     }
 };
 
-typedef struct {
-    uint8_t hourTill = 0;
-    uint8_t minuteTill = 0;
-    float desiredTemperature = 20;
-} ProgramUnit;
-
 class Thermostat { // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 private:
-    DHT dht;
+    DHT dht = DHT();
 
     //Self service variables
     const uint32_t MINIMAL_SAMPLING_INTERVAL = 2000;
@@ -56,12 +51,15 @@ private:
     TemperatureStack temperatureStack;
 
     //Inner variables
-    float hysteresis = 0.2;
+    float hysteresis = 0.25;
     float desiredTemperature = 0;
     float humidity = 0;
     float pressure = 0;
-    Mode mode;
-    ProgramUnit program[7][6];
+    float previousHighTemperature = 0;
+    float previousLowTemperature = 0;
+    boolean heatingNeeded = false;
+    boolean coolingNeeded = false;
+    Mode mode = MANUAL;
 
 public:
     void setup(uint8_t sensorPin, float initialDesiredTemperature) {
@@ -91,11 +89,19 @@ public:
     }
 
     boolean isHeatingNeeded() {
-        return temperatureStack.getAverageTemperature() <= desiredTemperature;
+        return heatingNeeded;
     }
 
     boolean isCoolingNeeded() {
-        return temperatureStack.getAverageTemperature() >= desiredTemperature;
+        return coolingNeeded;
+    }
+
+    Mode getMode() const {
+        return mode;
+    }
+
+    void setMode(Mode modeToSet) {
+        mode = modeToSet;
     }
 
     float incrementDesiredTemperature(float inc) {
@@ -112,8 +118,23 @@ public:
      * Should be put in loop with the interval taken from ::getMinimalSamplingInterval()
      * @see Thermostat::getMinimalSamplingInterval
      */
-    void updateStateFromSensors() {
+    void update() {
         humidity = dht.getHumidity();
         temperatureStack.addTemperature(dht.getTemperature());
+        float averageTemperature = getAverageTemperature();
+        heatingNeeded = previousHighTemperature > averageTemperature
+                        ? averageTemperature <= desiredTemperature - hysteresis
+                        : averageTemperature <= desiredTemperature;
+        coolingNeeded = previousLowTemperature < averageTemperature
+                        ? averageTemperature >= desiredTemperature + hysteresis
+                        : averageTemperature >= desiredTemperature;
+        if (previousHighTemperature < averageTemperature
+            || averageTemperature <= desiredTemperature - hysteresis) {
+            previousHighTemperature = getAverageTemperature();
+        }
+        if (previousLowTemperature > averageTemperature
+            || averageTemperature >= desiredTemperature - hysteresis) {
+            previousLowTemperature = getAverageTemperature();
+        }
     }
 };

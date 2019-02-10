@@ -2,10 +2,10 @@
 #include <LiquidCrystal.h>
 #include <Thermostat.cpp>
 
-#define DOWN_PIN 3
-#define UP_PIN 4
+#define DOWN_PIN 2
+#define UP_PIN 3
 #define RELAY_PIN 7
-#define SENSOR_PIN 2
+#define SENSOR_PIN A0
 
 #define BRIGHTNESS_PIN 5
 
@@ -56,7 +56,7 @@ void loop() {
     }
 
     if (isIntervalPassed(thermostat.getMinimalSamplingInterval(), sensorLastPollingTime)) {
-        thermostat.updateStateFromSensors();
+        thermostat.update();
         stateChanged = true;
     }
 
