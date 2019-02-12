@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
+#include <LightChrono.h>
 #include <Thermostat.cpp>
 
 #define DOWN_PIN 2
@@ -9,15 +10,15 @@
 
 #define BRIGHTNESS_PIN 5
 
-unsigned long sensorLastPollingTime = 0;
-unsigned long updateDisplayTime = 0;
-unsigned long readButtonsTime = 0;
-unsigned long updateBrightness = 0;
+LightChrono sensorPollingTimer; // NOLINT(cert-err58-cpp)
+LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
+LightChrono readButtonsTimer; // NOLINT(cert-err58-cpp)
+LightChrono updateBrightnessTimer; // NOLINT(cert-err58-cpp)
 
 LiquidCrystal lcd(8, 9, 10, 11, 12, 13); // NOLINT(cert-err58-cpp)
 Thermostat thermostat;
 
-boolean readButtons() {
+bool readButtons() {
     if (digitalRead(DOWN_PIN) == HIGH)
         thermostat.incrementDesiredTemperature(-0.5);
     else if (digitalRead(UP_PIN) == HIGH)
@@ -27,23 +28,13 @@ boolean readButtons() {
     return true;
 };
 
-boolean isIntervalPassed(uint16_t interval, unsigned long &previousTime) {
-    unsigned long currentTime = millis();
-    if (currentTime - interval >= previousTime) {
-        previousTime = currentTime;
-        return true;
-    } else {
-        return false;
-    }
-};
-
 void setup() {
     pinMode(DOWN_PIN, INPUT);
     pinMode(UP_PIN, INPUT);
     pinMode(RELAY_PIN, OUTPUT);
     pinMode(BRIGHTNESS_PIN, OUTPUT);
 
-    thermostat.setup(SENSOR_PIN, 20); // data pin 2
+    thermostat.setup(SENSOR_PIN, 20);
 
     lcd.begin(16, 2);
     lcd.print("Initializing! ");
@@ -51,16 +42,16 @@ void setup() {
 
 void loop() {
     bool stateChanged = false;
-    if (isIntervalPassed(150, readButtonsTime)) {
+    if (readButtonsTimer.hasPassed(150, true)) {
         stateChanged = readButtons();
     }
 
-    if (isIntervalPassed(thermostat.getMinimalSamplingInterval(), sensorLastPollingTime)) {
+    if (sensorPollingTimer.hasPassed(thermostat.getMinimalSamplingInterval(), true)) {
         thermostat.update();
         stateChanged = true;
     }
 
-    if (isIntervalPassed(500, updateDisplayTime) || stateChanged) {
+    if (updateDisplayTimer.hasPassed(500) || stateChanged) {
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("T");
@@ -77,10 +68,11 @@ void loop() {
         } else {
             digitalWrite(RELAY_PIN, LOW);
         }
+        updateDisplayTimer.restart();
     }
 
-    if (isIntervalPassed(250, updateBrightness)) {
-        uint8_t brightness = map(thermostat.getDesiredTemperature(), 10, 40, 10, 250);
+    if (updateBrightnessTimer.hasPassed(250, true)) {
+        uint8_t brightness = map(long(thermostat.getDesiredTemperature()), 10, 40, 10, 250);
         analogWrite(BRIGHTNESS_PIN, brightness);
     }
-};
+}

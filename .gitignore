@@ -3,3 +3,4 @@
 .piolibdeps
 CMakeListsPrivate.txt
 /cmake-build-debug/
+.idea

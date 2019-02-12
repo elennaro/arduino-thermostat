@@ -1,10 +1,12 @@
 #include <DHT.h>
 #include <Wire.h>
 
+#define DEFAULT_HYSTERESIS 0.25
+
 const float MINIMAL_DESIRED_TEMPERATURE = 10.0;
 const float MAXIMAL_DESIRED_TEMPERATURE = 40.0;
 
-enum Mode : boolean {
+enum Mode : bool {
     MANUAL = false,
     AUTO = true
 };
@@ -51,14 +53,14 @@ private:
     TemperatureStack temperatureStack;
 
     //Inner variables
-    float hysteresis = 0.25;
+    float hysteresis = DEFAULT_HYSTERESIS;
     float desiredTemperature = 0;
     float humidity = 0;
     float pressure = 0;
     float previousHighTemperature = 0;
     float previousLowTemperature = 0;
-    boolean heatingNeeded = false;
-    boolean coolingNeeded = false;
+    bool heatingNeeded = false;
+    bool coolingNeeded = false;
     Mode mode = MANUAL;
 
 public:
@@ -88,11 +90,11 @@ public:
         return MINIMAL_SAMPLING_INTERVAL;
     }
 
-    boolean isHeatingNeeded() {
+    bool isHeatingNeeded() {
         return heatingNeeded;
     }
 
-    boolean isCoolingNeeded() {
+    bool isCoolingNeeded() {
         return coolingNeeded;
     }
 
@@ -122,18 +124,29 @@ public:
         humidity = dht.getHumidity();
         temperatureStack.addTemperature(dht.getTemperature());
         float averageTemperature = getAverageTemperature();
-        heatingNeeded = previousHighTemperature > averageTemperature
-                        ? averageTemperature <= desiredTemperature - hysteresis
-                        : averageTemperature <= desiredTemperature;
-        coolingNeeded = previousLowTemperature < averageTemperature
-                        ? averageTemperature >= desiredTemperature + hysteresis
-                        : averageTemperature >= desiredTemperature;
-        if (previousHighTemperature < averageTemperature
+
+        heatingNeeded = heatingNeeded
+                        ? averageTemperature <= desiredTemperature + hysteresis
+                        : previousHighTemperature <= averageTemperature
+                          ? averageTemperature <= desiredTemperature
+                          : averageTemperature <= desiredTemperature - hysteresis;
+
+
+        coolingNeeded = coolingNeeded
+                        ? averageTemperature >= desiredTemperature - hysteresis
+                        : previousLowTemperature >= averageTemperature
+                          ? averageTemperature >= desiredTemperature
+                          : averageTemperature >= desiredTemperature + hysteresis;
+
+        if (heatingNeeded
+            || previousHighTemperature < averageTemperature
             || averageTemperature <= desiredTemperature - hysteresis) {
-            previousHighTemperature = getAverageTemperature();
+            previousHighTemperature = averageTemperature;
         }
-        if (previousLowTemperature > averageTemperature
-            || averageTemperature >= desiredTemperature - hysteresis) {
+
+        if (coolingNeeded
+            || previousLowTemperature > averageTemperature
+            || averageTemperature >= desiredTemperature + hysteresis) {
             previousLowTemperature = getAverageTemperature();
         }
     }
