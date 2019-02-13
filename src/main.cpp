@@ -1,7 +1,11 @@
 #include <Arduino.h>
-#include <LiquidCrystal.h>
 #include <LightChrono.h>
 #include <Thermostat.cpp>
+
+#include <LiquidCrystal_I2C.h>
+
+#define SDA A4
+#define SCL A5
 
 #define DOWN_PIN 2
 #define UP_PIN 3
@@ -15,7 +19,10 @@ LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
 LightChrono readButtonsTimer; // NOLINT(cert-err58-cpp)
 LightChrono updateBrightnessTimer; // NOLINT(cert-err58-cpp)
 
-LiquidCrystal lcd(8, 9, 10, 11, 12, 13); // NOLINT(cert-err58-cpp)
+//LiquidCrystal lcd(8, 9, 10, 11, 12, 13); // NOLINT(cert-err58-cpp)
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+
 Thermostat thermostat;
 
 bool readButtons() {
@@ -36,8 +43,13 @@ void setup() {
 
     thermostat.setup(SENSOR_PIN, 20);
 
-    lcd.begin(16, 2);
+    lcd.init(); // initialize the lcd
+    // Print a message to the LCD.
+    lcd.backlight();
+    lcd.setCursor(3, 1);
     lcd.print("Initializing! ");
+    delay(2000);
+    lcd.clear();
 }
 
 void loop() {
@@ -52,20 +64,22 @@ void loop() {
     }
 
     if (updateDisplayTimer.hasPassed(500) || stateChanged) {
-        lcd.clear();
-        lcd.setCursor(0, 0);
+        lcd.setCursor(3, 0);
         lcd.print("T");
         lcd.print(thermostat.getAverageTemperature(), 1);
         lcd.print(" D");
         lcd.print(thermostat.getDesiredTemperature(), 1);
         lcd.print(" H");
         lcd.print(thermostat.getHumidity(), 0);
+        lcd.setCursor(0, 3);
+        lcd.print(thermostat.getMode() ? "auto  " : "manual ");
+        lcd.setCursor(13, 3);
 
         if (thermostat.isHeatingNeeded()) {
-            lcd.setCursor(0, 1);
-            lcd.print("Heating!");
+            lcd.print("heating");
             digitalWrite(RELAY_PIN, HIGH);
         } else {
+            lcd.print("        ");
             digitalWrite(RELAY_PIN, LOW);
         }
         updateDisplayTimer.restart();
