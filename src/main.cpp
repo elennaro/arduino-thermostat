@@ -1,92 +1,85 @@
-#include <Arduino.h>
-#include <LightChrono.h>
-#include <Thermostat.cpp>
+#include <main.h>
 
-#include <LiquidCrystal_I2C.h>
-
-#define SDA A4
-#define SCL A5
-
-#define DOWN_PIN 2
-#define UP_PIN 3
-#define RELAY_PIN 7
-#define SENSOR_PIN A0
-
-#define BRIGHTNESS_PIN 5
+volatile bool stateChanged = false;
 
 LightChrono sensorPollingTimer; // NOLINT(cert-err58-cpp)
 LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
 LightChrono readButtonsTimer; // NOLINT(cert-err58-cpp)
 LightChrono updateBrightnessTimer; // NOLINT(cert-err58-cpp)
-
-//LiquidCrystal lcd(8, 9, 10, 11, 12, 13); // NOLINT(cert-err58-cpp)
-
-LiquidCrystal_I2C lcd(0x27, 20, 4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+LiquidCrystal_I2C lcd(DISPLAY_ADDRESS, DISPLAY_WIDTH, DISPLAY_HEIGHT);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 Thermostat thermostat;
+SingleRotaryEnc *rotaryEnc;
 
-bool readButtons() {
-    if (digitalRead(DOWN_PIN) == HIGH)
-        thermostat.incrementDesiredTemperature(-0.5);
-    else if (digitalRead(UP_PIN) == HIGH)
-        thermostat.incrementDesiredTemperature(+0.5);
-    else
-        return false;
-    return true;
-};
+void click() {
+		Serial.println("CLICK");
+		stateChanged = true;
+}
+
+void up() {
+		Serial.println("UP");
+		thermostat.incrementDesiredTemperature(+0.5);
+		stateChanged = true;
+}
+
+void down() {
+		Serial.println("DOWN");
+		thermostat.incrementDesiredTemperature(-0.5);
+		stateChanged = true;
+}
 
 void setup() {
-    pinMode(DOWN_PIN, INPUT);
-    pinMode(UP_PIN, INPUT);
-    pinMode(RELAY_PIN, OUTPUT);
-    pinMode(BRIGHTNESS_PIN, OUTPUT);
+		Serial.begin(115200);
+		pinMode(RELAY_PIN, OUTPUT);
+		pinMode(BRIGHTNESS_PIN, OUTPUT);
 
-    thermostat.setup(SENSOR_PIN, 20);
+		rotaryEnc = new SingleRotaryEnc(CLK_PIN, DATA_PIN, BUTTON_PIN, up, down, click);
 
-    lcd.init(); // initialize the lcd
-    // Print a message to the LCD.
-    lcd.backlight();
-    lcd.setCursor(3, 1);
-    lcd.print("Initializing! ");
-    delay(2000);
-    lcd.clear();
+		thermostat.setup(SENSOR_PIN, 20);
+
+		lcd.init(); // initialize the lcd
+		// Print a message to the LCD.
+		lcd.backlight();
+		lcd.setCursor(3, 1);
+		lcd.print("Initializing! ");
+		Serial.println("Initializing! ");
+		delay(2000);
+		lcd.clear();
 }
 
 void loop() {
-    bool stateChanged = false;
-    if (readButtonsTimer.hasPassed(150, true)) {
-        stateChanged = readButtons();
-    }
 
-    if (sensorPollingTimer.hasPassed(thermostat.getMinimalSamplingInterval(), true)) {
-        thermostat.update();
-        stateChanged = true;
-    }
+		rotaryEnc->loop();
 
-    if (updateDisplayTimer.hasPassed(500) || stateChanged) {
-        lcd.setCursor(3, 0);
-        lcd.print("T");
-        lcd.print(thermostat.getAverageTemperature(), 1);
-        lcd.print(" D");
-        lcd.print(thermostat.getDesiredTemperature(), 1);
-        lcd.print(" H");
-        lcd.print(thermostat.getHumidity(), 0);
-        lcd.setCursor(0, 3);
-        lcd.print(thermostat.getMode() ? "auto  " : "manual ");
-        lcd.setCursor(13, 3);
+		if (sensorPollingTimer.hasPassed(thermostat.getMinimalSamplingInterval(), true)) {
+				thermostat.update();
+				stateChanged = true;
+		}
 
-        if (thermostat.isHeatingNeeded()) {
-            lcd.print("heating");
-            digitalWrite(RELAY_PIN, HIGH);
-        } else {
-            lcd.print("        ");
-            digitalWrite(RELAY_PIN, LOW);
-        }
-        updateDisplayTimer.restart();
-    }
+		if (updateDisplayTimer.hasPassed(500, true) || stateChanged) {
+				lcd.setCursor(3, 0);
+				lcd.print("T");
+				lcd.print(thermostat.getAverageTemperature(), 1);
+				lcd.print(" D");
+				lcd.print(thermostat.getDesiredTemperature(), 1);
+				lcd.print(" H");
+				lcd.print(thermostat.getHumidity(), 0);
+				lcd.setCursor(0, 3);
+				lcd.print(thermostat.getMode() ? "auto  " : "manual ");
+				lcd.setCursor(13, 3);
 
-    if (updateBrightnessTimer.hasPassed(250, true)) {
-        uint8_t brightness = map(long(thermostat.getDesiredTemperature()), 10, 40, 10, 250);
-        analogWrite(BRIGHTNESS_PIN, brightness);
-    }
+				if (thermostat.isHeatingNeeded()) {
+						lcd.print("heating");
+						digitalWrite(RELAY_PIN, HIGH);
+				} else {
+						lcd.print("        ");
+						digitalWrite(RELAY_PIN, LOW);
+				}
+				stateChanged = false;
+		}
+
+		if (updateBrightnessTimer.hasPassed(250, true)) {
+				uint8_t brightness = map(long(thermostat.getDesiredTemperature()), 10, 40, 10, 250);
+				analogWrite(BRIGHTNESS_PIN, brightness);
+		}
 }
