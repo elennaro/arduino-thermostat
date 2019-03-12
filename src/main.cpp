@@ -1,4 +1,6 @@
 #include <main.h>
+#include <Wire.h>
+#include <RtcDS3231.h>
 
 volatile bool stateChanged = false;
 
@@ -8,6 +10,7 @@ LightChrono readButtonsTimer; // NOLINT(cert-err58-cpp)
 LightChrono updateBrightnessTimer; // NOLINT(cert-err58-cpp)
 LiquidCrystal_I2C lcd(DISPLAY_ADDRESS, DISPLAY_WIDTH, DISPLAY_HEIGHT);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
+RtcDS3231<TwoWire> Rtc(Wire);
 Thermostat thermostat;
 SingleRotaryEnc *rotaryEnc;
 
@@ -30,6 +33,7 @@ void down() {
 
 void setup() {
 		Serial.begin(115200);
+		Rtc.Begin();
 		pinMode(RELAY_PIN, OUTPUT);
 		pinMode(BRIGHTNESS_PIN, OUTPUT);
 
@@ -57,13 +61,34 @@ void loop() {
 		}
 
 		if (updateDisplayTimer.hasPassed(500, true) || stateChanged) {
-				lcd.setCursor(3, 0);
+				lcd.setCursor(1, 0);
+				if (Rtc.GetDateTime().Day() < 10) {
+						lcd.print(0);
+				}
+				lcd.print(Rtc.GetDateTime().Day());
+				lcd.print("-");
+				if (Rtc.GetDateTime().Month() < 10) {
+						lcd.print(0);
+				}
+				lcd.print(Rtc.GetDateTime().Month());
+				lcd.print("-");
+				lcd.print(Rtc.GetDateTime().Year());
+				lcd.print(" ");
+				if (Rtc.GetDateTime().Hour() < 10) {
+						lcd.print(0);
+				}
+				lcd.print(Rtc.GetDateTime().Hour());
+				lcd.print(":");
+				lcd.print(Rtc.GetDateTime().Minute());
+				lcd.print(":");
+				lcd.print(Rtc.GetDateTime().Second());
+				lcd.setCursor(0, 1);
 				lcd.print("T");
 				lcd.print(thermostat.getAverageTemperature(), 1);
 				lcd.print(" D");
 				lcd.print(thermostat.getDesiredTemperature(), 1);
 				lcd.print(" H");
-				lcd.print(thermostat.getHumidity(), 0);
+				lcd.print(thermostat.getHumidity(), 1);
 				lcd.setCursor(0, 3);
 				lcd.print(thermostat.getMode() ? "auto  " : "manual ");
 				lcd.setCursor(13, 3);
