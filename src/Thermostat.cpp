@@ -1,81 +1,41 @@
 #include <DHT.h>
 #include <Wire.h>
 
+#include "TemperatureProgram.h"
+#include "TemperatureStack.cpp"
+
 #define DEFAULT_HYSTERESIS 0.25
 
-const float MINIMAL_DESIRED_TEMPERATURE = 10.0;
-const float MAXIMAL_DESIRED_TEMPERATURE = 40.0;
-
-enum Mode : bool {
-		MANUAL = false,
-		AUTO = true
-};
-
-class TemperatureStack {  // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
-public:
-		static const uint8_t SIZE_OF_TEMPERATURES_BUFFER = 5;
-private:
-		float temperatures[SIZE_OF_TEMPERATURES_BUFFER];
-		uint8_t lastPointerPosition = 0;
-
-public:
-		void setup(float desiredTemperature) {
-				for (float &temperature : temperatures) {
-						temperature = 20;
-				}
-		}
-
-		void addTemperature(float temperature) {
-				if (isnan(temperature) || temperature < 0 || temperature > 100)
-						return;
-				if (lastPointerPosition++ >= SIZE_OF_TEMPERATURES_BUFFER)
-						lastPointerPosition = 0;
-				temperatures[lastPointerPosition] = temperature;
-		}
-
-		float getAverageTemperature() {
-				float sum = 0;
-				for (float &temperature : temperatures) {
-						sum += temperature;
-				}
-				return sum / SIZE_OF_TEMPERATURES_BUFFER;
-		}
-};
-
-class Thermostat { // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
+class Thermostat : public TemperatureProgram { // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 private:
 		DHT dht = DHT();
 
 		//Self service variables
 		const uint32_t MINIMAL_SAMPLING_INTERVAL = 2000;
 
-		//Dependencies that will be injected
+		//Dependencies
 		TemperatureStack temperatureStack;
+
+		//Injected Dependencies
 
 		//Inner variables
 		float hysteresis = DEFAULT_HYSTERESIS;
-		float desiredTemperature = 0;
 		float humidity = 0;
 		float pressure = 0;
 		float previousHighTemperature = 0;
 		float previousLowTemperature = 0;
 		bool heatingNeeded = false;
 		bool coolingNeeded = false;
-		Mode mode = MANUAL;
 
 public:
-		void setup(uint8_t sensorPin, float initialDesiredTemperature) {
-				this->desiredTemperature = initialDesiredTemperature;
-				temperatureStack.setup(this->getDesiredTemperature());
+		void setup(RtcDS3231<TwoWire> *Rtc, uint8_t sensorPin, float initialDesiredTemperature) {
+				TemperatureProgram::setup(Rtc, initialDesiredTemperature);
+				temperatureStack.setup(initialDesiredTemperature);
 				dht.setup(sensorPin);
 		}
 
 		float getAverageTemperature() {
 				return temperatureStack.getAverageTemperature();
-		}
-
-		float getDesiredTemperature() const {
-				return desiredTemperature;
 		}
 
 		float getHumidity() const {
@@ -98,36 +58,14 @@ public:
 				return coolingNeeded;
 		}
 
-		Mode getMode() const {
-				return mode;
-		}
-
-		void setMode(Mode modeToSet) {
-				mode = modeToSet;
-		}
-
-		float incrementDesiredTemperature(float inc) {
-				desiredTemperature += inc;
-				if (desiredTemperature < MINIMAL_DESIRED_TEMPERATURE) {
-						desiredTemperature = MINIMAL_DESIRED_TEMPERATURE;
-				} else if (desiredTemperature > MAXIMAL_DESIRED_TEMPERATURE) {
-						desiredTemperature = MAXIMAL_DESIRED_TEMPERATURE;
-				}
-				return desiredTemperature;
-		}
-
 		/**
 		 * Should be put in loop with the interval taken from ::getMinimalSamplingInterval()
 		 * @see Thermostat::getMinimalSamplingInterval
 		 */
-		void update() {
+		void update() override {
+				TemperatureProgram::update();
 				humidity = dht.getHumidity();
-				Serial.println("Humidity");
-				Serial.println(dht.getTemperature());
-				Serial.println(dht.getStatusString());
-				Serial.println(dht.getStatus());
-				Serial.println(dht.getHumidity());
-				Serial.println(dht.getTemperature());
+				desiredTemperature = getDesiredTemperature();
 				temperatureStack.addTemperature(dht.getTemperature());
 				float averageTemperature = getAverageTemperature();
 
