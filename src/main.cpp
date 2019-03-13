@@ -32,8 +32,18 @@ void down() {
 }
 
 void setup() {
-		Serial.begin(115200);
+		//Init the time
+		RtcDateTime compiledDateTime = RtcDateTime(__DATE__, __TIME__);
 		Rtc.Begin();
+		RtcDateTime now = Rtc.GetDateTime();
+		if (now < compiledDateTime) {
+				Rtc.SetDateTime(compiledDateTime);
+		}
+		Rtc.Enable32kHzPin(false);
+		Rtc.SetSquareWavePin(DS3231SquareWavePin_ModeNone);
+
+		Serial.begin(115200);
+
 		pinMode(RELAY_PIN, OUTPUT);
 		pinMode(BRIGHTNESS_PIN, OUTPUT);
 
