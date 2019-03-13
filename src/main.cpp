@@ -51,6 +51,13 @@ void setup() {
 		lcd.clear();
 }
 
+void displayTwoDigits(uint8_t numberToDisplay) {
+		if (numberToDisplay < 10) {
+				lcd.print(0);
+		}
+		lcd.print(numberToDisplay);
+}
+
 void loop() {
 
 		rotaryEnc->loop();
@@ -62,26 +69,17 @@ void loop() {
 
 		if (updateDisplayTimer.hasPassed(500, true) || stateChanged) {
 				lcd.setCursor(1, 0);
-				if (Rtc.GetDateTime().Day() < 10) {
-						lcd.print(0);
-				}
-				lcd.print(Rtc.GetDateTime().Day());
+				displayTwoDigits(Rtc.GetDateTime().Day());
 				lcd.print("-");
-				if (Rtc.GetDateTime().Month() < 10) {
-						lcd.print(0);
-				}
-				lcd.print(Rtc.GetDateTime().Month());
+				displayTwoDigits(Rtc.GetDateTime().Month());
 				lcd.print("-");
 				lcd.print(Rtc.GetDateTime().Year());
 				lcd.print(" ");
-				if (Rtc.GetDateTime().Hour() < 10) {
-						lcd.print(0);
-				}
-				lcd.print(Rtc.GetDateTime().Hour());
+				displayTwoDigits(Rtc.GetDateTime().Hour());
 				lcd.print(":");
-				lcd.print(Rtc.GetDateTime().Minute());
+				displayTwoDigits(Rtc.GetDateTime().Minute());
 				lcd.print(":");
-				lcd.print(Rtc.GetDateTime().Second());
+				displayTwoDigits(Rtc.GetDateTime().Second());
 				lcd.setCursor(0, 1);
 				lcd.print("T");
 				lcd.print(thermostat.getAverageTemperature(), 1);
