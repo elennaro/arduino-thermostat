@@ -7,12 +7,22 @@ enum WhatToChangeOnMainScreen : bool {
 		THERMOSTAT_MODE = false
 };
 
+
+enum CurrentScreen : uint8_t {
+		MAIN_SCREEN = 0,
+		MENU_SCREEN = 1,
+		CLOCK_SETUP_SCREEN = 2,
+		PROGRAM_THERMOSTAT_SCREEN = 3
+};
+
 volatile bool stateChanged = false;
 volatile bool whatToChangeOnMainScreen = DESIRED_TEMPERATURE;
+volatile uint8_t currentScreen = MAIN_SCREEN;
 
 LightChrono sensorPollingTimer; // NOLINT(cert-err58-cpp)
 LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
 LightChrono resetWhatToChangeOnMainScreen; // NOLINT(cert-err58-cpp)
+LightChrono resetScreenToMain; // NOLINT(cert-err58-cpp)
 LightChrono updateBrightnessTimer; // NOLINT(cert-err58-cpp)
 LiquidCrystal_I2C lcd(DISPLAY_ADDRESS, DISPLAY_WIDTH, DISPLAY_HEIGHT);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
@@ -21,13 +31,22 @@ Thermostat thermostat;
 SingleRotaryEnc *rotaryEnc;
 
 void click() {
-		Serial.println("CLICK");
+		switch (currentScreen) {
+				case MAIN_SCREEN:
+						whatToChangeOnMainScreen = !whatToChangeOnMainScreen;
+						resetWhatToChangeOnMainScreen.restart();
+						break;
+				default:
+						Serial.println("CLICK");
+						break;
+		}
 		stateChanged = true;
 }
 
 void longPress() {
 		whatToChangeOnMainScreen = !whatToChangeOnMainScreen;
 		resetWhatToChangeOnMainScreen.restart();
+		stateChanged = true;
 }
 
 void up() {
@@ -148,5 +167,10 @@ void loop() {
 
 		if (resetWhatToChangeOnMainScreen.hasPassed(5000, true)) {
 				whatToChangeOnMainScreen = DESIRED_TEMPERATURE;
+		}
+
+		if (resetScreenToMain.hasPassed(60000, true) && currentScreen != MAIN_SCREEN) {
+				currentScreen = MAIN_SCREEN;
+				stateChanged = true;
 		}
 }
