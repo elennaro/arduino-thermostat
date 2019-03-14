@@ -5,13 +5,20 @@
 #ifndef THERMOSTAT_PROJECT_MAIN_H
 #define THERMOSTAT_PROJECT_MAIN_H
 
-#include <Arduino.h>
-#include <LightChrono.h>
+#if defined(ARDUINO) && ARDUINO >= 100
 
+#include "Arduino.h"
+
+#endif
+
+#include <Wire.h>
+#include <RtcDS3231.h>
+#include <LightChrono.h>
 #include <LiquidCrystal_I2C.h>
 
+#include <Thermostat.h>
+#include <view/ViewController.h>
 #include <SingleRotaryEnc.h>
-#include <Thermostat.cpp>
 
 #define CLK_PIN  2
 #define DATA_PIN 3

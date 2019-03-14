@@ -1,97 +1,69 @@
-#include <DHT.h>
-#include <Wire.h>
+#include <Thermostat.h>
 
-#include "TemperatureProgram.h"
-#include "TemperatureStack.cpp"
+void Thermostat::setup(RtcDS3231<TwoWire> *Rtc, uint8_t sensorPin, float initialDesiredTemperature) {
+		TemperatureProgram::setup(Rtc, initialDesiredTemperature);
+		temperatureStack.setup(initialDesiredTemperature);
+		dht.setup(sensorPin);
+}
 
-#define DEFAULT_HYSTERESIS 0.25
+float Thermostat::getAverageTemperature() {
+		return temperatureStack.getAverageTemperature();
+}
 
-class Thermostat : public TemperatureProgram { // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
-private:
-		DHT dht = DHT();
+float Thermostat::getHumidity() const {
+		return humidity;
+}
 
-		//Self service variables
-		const uint32_t MINIMAL_SAMPLING_INTERVAL = 2000;
+float Thermostat::getPressure() const {
+		return pressure;
+}
 
-		//Dependencies
-		TemperatureStack temperatureStack;
+uint16_t Thermostat::getMinimalSamplingInterval() const {
+		return MINIMAL_SAMPLING_INTERVAL;
+}
 
-		//Injected Dependencies
+bool Thermostat::isHeatingNeeded() {
+		return heatingNeeded;
+}
 
-		//Inner variables
-		float hysteresis = DEFAULT_HYSTERESIS;
-		float humidity = 0;
-		float pressure = 0;
-		float previousHighTemperature = 0;
-		float previousLowTemperature = 0;
-		bool heatingNeeded = false;
-		bool coolingNeeded = false;
+bool Thermostat::isCoolingNeeded() {
+		return coolingNeeded;
+}
 
-public:
-		void setup(RtcDS3231<TwoWire> *Rtc, uint8_t sensorPin, float initialDesiredTemperature) {
-				TemperatureProgram::setup(Rtc, initialDesiredTemperature);
-				temperatureStack.setup(initialDesiredTemperature);
-				dht.setup(sensorPin);
+/**
+ * Should be put in loop with the interval taken from ::getMinimalSamplingInterval()
+ * @see Thermostat::getMinimalSamplingInterval
+ */
+void Thermostat::update() {
+		TemperatureProgram::update();
+
+		humidity = dht.getHumidity();
+		desiredTemperature = getDesiredTemperature();
+		temperatureStack.addTemperature(dht.getTemperature());
+		float averageTemperature = getAverageTemperature();
+
+		heatingNeeded = heatingNeeded
+		                ? averageTemperature <= desiredTemperature + hysteresis
+		                : previousHighTemperature <= averageTemperature
+		                  ? averageTemperature <= desiredTemperature
+		                  : averageTemperature <= desiredTemperature - hysteresis;
+
+
+		coolingNeeded = coolingNeeded
+		                ? averageTemperature >= desiredTemperature - hysteresis
+		                : previousLowTemperature >= averageTemperature
+		                  ? averageTemperature >= desiredTemperature
+		                  : averageTemperature >= desiredTemperature + hysteresis;
+
+		if (heatingNeeded
+		    || previousHighTemperature < averageTemperature
+		    || averageTemperature <= desiredTemperature - hysteresis) {
+				previousHighTemperature = averageTemperature;
 		}
 
-		float getAverageTemperature() {
-				return temperatureStack.getAverageTemperature();
+		if (coolingNeeded
+		    || previousLowTemperature > averageTemperature
+		    || averageTemperature >= desiredTemperature + hysteresis) {
+				previousLowTemperature = getAverageTemperature();
 		}
-
-		float getHumidity() const {
-				return humidity;
-		}
-
-		float getPressure() const {
-				return pressure;
-		}
-
-		uint16_t getMinimalSamplingInterval() const {
-				return MINIMAL_SAMPLING_INTERVAL;
-		}
-
-		bool isHeatingNeeded() {
-				return heatingNeeded;
-		}
-
-		bool isCoolingNeeded() {
-				return coolingNeeded;
-		}
-
-		/**
-		 * Should be put in loop with the interval taken from ::getMinimalSamplingInterval()
-		 * @see Thermostat::getMinimalSamplingInterval
-		 */
-		void update() override {
-				TemperatureProgram::update();
-				humidity = dht.getHumidity();
-				desiredTemperature = getDesiredTemperature();
-				temperatureStack.addTemperature(dht.getTemperature());
-				float averageTemperature = getAverageTemperature();
-
-				heatingNeeded = heatingNeeded
-				                ? averageTemperature <= desiredTemperature + hysteresis
-				                : previousHighTemperature <= averageTemperature
-				                  ? averageTemperature <= desiredTemperature
-				                  : averageTemperature <= desiredTemperature - hysteresis;
-
-
-				coolingNeeded = coolingNeeded
-				                ? averageTemperature >= desiredTemperature - hysteresis
-				                : previousLowTemperature >= averageTemperature
-				                  ? averageTemperature >= desiredTemperature
-				                  : averageTemperature >= desiredTemperature + hysteresis;
-
-				if (heatingNeeded
-				    || previousHighTemperature < averageTemperature
-				    || averageTemperature <= desiredTemperature - hysteresis) {
-						previousHighTemperature = averageTemperature;
-				}
-
-				if (coolingNeeded
-				    || previousLowTemperature > averageTemperature
-				    || averageTemperature >= desiredTemperature + hysteresis) {
-						previousLowTemperature = getAverageTemperature();
-				}
-		}
-};
+}
