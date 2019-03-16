@@ -32,7 +32,6 @@ protected:
 		RtcDS3231<TwoWire> *rtc;
 
 		//Fields
-		volatile bool stateChanged = false;
 
 		//Methods
 		void displayTwoDigits(uint8_t numberToDisplay) {
@@ -61,19 +60,14 @@ public:
 
 		virtual void updateDisplay() = 0;
 
+		virtual void updateSensorsData() = 0;
+
 		virtual ScreenName getCurrentScreenName() = 0;
 
-		//Methods - Field Accessors
-		void setStateChanged(boolean value) {
-				stateChanged = value;
-		}
-
-		boolean isStateChanged() {
-				return stateChanged;
-		}
-
 		//Methods - Arduino specific
-		virtual void loop() {}
+		virtual void loop() {
+				updateDisplay();
+		}
 };
 
 

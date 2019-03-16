@@ -61,10 +61,10 @@ void loop() {
 
 		if (sensorPollingTimer.hasPassed(thermostat.getMinimalSamplingInterval(), true)) {
 				thermostat.update();
-				viewController->setStateChanged(true);
+				viewController->updateSensorsData();
 		}
 
-		if (updateRelay.hasPassed(500, true) || viewController->isStateChanged()) {
+		if (updateRelay.hasPassed(500, true)) {
 				if (thermostat.isHeatingNeeded()) {
 						digitalWrite(RELAY_PIN, HIGH);
 				} else {

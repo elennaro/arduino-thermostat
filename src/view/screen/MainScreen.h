@@ -23,8 +23,17 @@ class MainScreen : public Screen {
 private:
 		//Parameters
 		volatile bool whatToChangeOnMainScreen = DESIRED_TEMPERATURE;
-		LightChrono resetWhatToChangeOnMainScreen; // NOLINT(cert-err58-cpp)
-		LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
+		volatile bool shouldUpdateDesiredTemperature = true;
+		volatile bool shouldUpdateThermostatMode = true;
+		volatile bool shouldUpdateSensorsData = true;
+		volatile bool shouldUpdateState = true;
+		volatile bool shouldUpdateTime = true;
+		volatile bool shouldUpdateDate = true;
+
+		LightChrono resetWhatToChangeOnMainScreenTimeout; // NOLINT(cert-err58-cpp)
+		LightChrono updateTimeTimeout; // NOLINT(cert-err58-cpp)
+
+		uint8_t oldDay = 0;
 
 		//Methods
 
@@ -44,15 +53,17 @@ public:
 
 		void longPress() override;
 
+		void updateDate();
+
 		void updateTime();
 
-		void updateSensorsData();
+		void updateSensorsData() override;
 
 		void updateDesiredTemperature();
 
 		void updateState();
 
-		void updateMode();
+		void updateThermostatMode();
 
 		void updateDisplay() override;
 

@@ -21,14 +21,6 @@ ViewController::ViewController(LiquidCrystal_I2C *displayPointer, RtcDS3231<TwoW
 		setScreen(ScreenName::MAIN_SCREEN);
 }
 
-void ViewController::setStateChanged(bool stateChanged) {
-		screen->setStateChanged(stateChanged);
-}
-
-bool ViewController::isStateChanged() {
-		return screen->isStateChanged();
-}
-
 void ViewController::up() {
 		screen->up();
 }
@@ -45,11 +37,14 @@ void ViewController::longPress() {
 		screen->longPress();
 }
 
+void ViewController::updateSensorsData() {
+		screen->updateSensorsData();
+}
+
 void ViewController::loop() {
 		screen->loop();
 		if (resetScreenToMain.hasPassed(60000, true) && screen->getCurrentScreenName() != ScreenName::MAIN_SCREEN) {
 				setScreen(ScreenName::MAIN_SCREEN);
-				setStateChanged(true);
 		}
 }
 

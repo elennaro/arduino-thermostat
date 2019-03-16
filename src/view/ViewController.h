@@ -38,11 +38,6 @@ private:
 public:
 		ViewController(LiquidCrystal_I2C *displayPointer, RtcDS3231<TwoWire> *Rtc, Thermostat *thermostatPointer);
 
-//Methods - Accessors
-		void setStateChanged(boolean stateChanged);
-
-		boolean isStateChanged();
-
 //Methods - Actions
 		void up();
 
@@ -51,6 +46,8 @@ public:
 		void click();
 
 		void longPress();
+
+		void updateSensorsData();
 
 //Methods - Arduino specific
 
