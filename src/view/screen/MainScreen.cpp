@@ -83,7 +83,11 @@ void MainScreen::updateMode() {
 				display->blink_off();
 		}
 
-		display->print(thermostat->getMode() ? F("auto  ") : F("manual "));
+		display->print(
+						thermostat->getMode()
+						? (whatToChangeOnMainScreen == THERMOSTAT_MODE ? F("AUTO  ") : F("auto  "))
+						: (whatToChangeOnMainScreen == THERMOSTAT_MODE ? F("MANUAL") : F("manual"))
+		);
 
 		if (whatToChangeOnMainScreen == THERMOSTAT_MODE) {
 				display->setCursor(0, 3);
