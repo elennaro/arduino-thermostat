@@ -33,7 +33,6 @@ protected:
 
 		//Fields
 		volatile bool stateChanged = false;
-		LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
 
 		//Methods
 		void displayTwoDigits(uint8_t numberToDisplay) {
@@ -74,14 +73,7 @@ public:
 		}
 
 		//Methods - Arduino specific
-
-		virtual void loop() {
-				if (updateDisplayTimer.hasPassed(500, true) || stateChanged) {
-						updateDisplay();
-						stateChanged = false;
-						updateDisplayTimer.restart();
-				}
-		}
+		virtual void loop() {}
 };
 
 

@@ -40,7 +40,7 @@ void MainScreen::longPress() {
 		stateChanged = true;
 }
 
-void MainScreen::updateDisplay() {
+void MainScreen::updateTime() {
 		display->setCursor(1, 0);
 		displayTwoDigits(rtc->GetDateTime().Day());
 		display->print(F("-"));
@@ -53,15 +53,30 @@ void MainScreen::updateDisplay() {
 		displayTwoDigits(rtc->GetDateTime().Minute());
 		display->print(F(":"));
 		displayTwoDigits(rtc->GetDateTime().Second());
+}
+
+void MainScreen::updateSensorsData() {
 		display->setCursor(0, 1);
 		display->print(F("T"));
 		display->print(thermostat->getAverageTemperature(), 1);
-		display->print(F(" D"));
-		display->print(thermostat->getDesiredTemperature(), 1);
+		display->setCursor(12, 1);
 		display->print(F(" H"));
 		display->print(thermostat->getHumidity(), 1);
-		display->setCursor(0, 3);
+}
 
+void MainScreen::updateDesiredTemperature() {
+		display->setCursor(6, 1);
+		display->print(F(" D"));
+		display->print(thermostat->getDesiredTemperature(), 1);
+}
+
+void MainScreen::updateState() {
+		display->setCursor(13, 3);
+		display->print(thermostat->isHeatingNeeded() ? F("heating") : F("        "));
+}
+
+void MainScreen::updateMode() {
+		display->setCursor(0, 3);
 		if (whatToChangeOnMainScreen == THERMOSTAT_MODE) {
 				display->blink_on();
 		} else {
@@ -70,18 +85,36 @@ void MainScreen::updateDisplay() {
 
 		display->print(thermostat->getMode() ? F("auto  ") : F("manual "));
 
-		display->setCursor(13, 3);
-		display->print(thermostat->isHeatingNeeded() ? F("heating") : F("        "));
-
 		if (whatToChangeOnMainScreen == THERMOSTAT_MODE) {
 				display->setCursor(0, 3);
 		}
+}
+
+
+void MainScreen::updateDisplay() {
+
+		updateTime();
+
+		updateSensorsData();
+
+		updateDesiredTemperature();
+
+		updateState();
+
+		updateMode();
+
 }
 
 void MainScreen::loop() {
 		Screen::loop();
 		if (resetWhatToChangeOnMainScreen.hasPassed(5000, true)) {
 				whatToChangeOnMainScreen = DESIRED_TEMPERATURE;
+		}
+
+		if (updateDisplayTimer.hasPassed(500, true) || stateChanged) {
+				updateDisplay();
+				stateChanged = false;
+				updateDisplayTimer.restart();
 		}
 }
 

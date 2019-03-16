@@ -24,8 +24,18 @@ private:
 		//Parameters
 		volatile bool whatToChangeOnMainScreen = DESIRED_TEMPERATURE;
 		LightChrono resetWhatToChangeOnMainScreen; // NOLINT(cert-err58-cpp)
+		LightChrono updateDisplayTimer; // NOLINT(cert-err58-cpp)
 
 		//Methods
+
+public:
+		//Constructors
+		MainScreen(LiquidCrystal_I2C *display, RtcDS3231<TwoWire> *Rtc, Thermostat *thermostat);
+
+		//Methods - Field Accessors
+		ScreenName getCurrentScreenName() override;
+
+		//Methods Interface
 		void up() override;
 
 		void down() override;
@@ -34,16 +44,20 @@ private:
 
 		void longPress() override;
 
+		void updateTime();
+
+		void updateSensorsData();
+
+		void updateDesiredTemperature();
+
+		void updateState();
+
+		void updateMode();
+
 		void updateDisplay() override;
 
+		//Methods Microcontroller specific
 		void loop() override;
-
-public:
-		//Constructors
-		MainScreen(LiquidCrystal_I2C *display, RtcDS3231<TwoWire> *Rtc, Thermostat *thermostat);
-
-		//Methods - Field Accessors
-		ScreenName getCurrentScreenName() override;
 };
 
 
